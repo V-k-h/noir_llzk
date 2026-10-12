@@ -190,3 +190,94 @@ fn memory_write_then_read_rejects_corrupted_value() {
         &selector,
     );
 }
+
+/// Dishonest selector on a read: index 0, but the nondet one-hot points at
+/// slot 1 and the read-out carries slot 1's value. `w3 == Σ s_i * mem[i]`
+/// holds, so only the match constraint `s_i * (idx - i) == 0` can reject.
+#[test]
+fn memory_read_rejects_dishonest_selector() {
+    use crate::tests::e2e::assert_constrain_rejects_with_nondet;
+    use llzk_interpreter::Felt;
+
+    let circuit = make_circuit_with_opcodes(
+        3,
+        &[0, 1, 2],
+        &[],
+        &[3],
+        vec![mem_init(0, &[0, 1]), mem_read(0, 2, 3)],
+    );
+    let inputs = [felt_u64(42), felt_u64(99), felt_u64(0)]; // index 0
+    let dishonest = [Felt::from_u64(0), Felt::from_u64(1)]; // points at slot 1
+
+    assert_constrain_rejects_with_nondet(
+        circuit,
+        &inputs,
+        "w3",
+        felt_u64(99), // mem[1], consistent with the dishonest selector
+        "!=",
+        &[],
+        &dishonest,
+    );
+}
+
+/// All-zero selector on a read: every match constraint holds trivially and a
+/// read-out of 0 equals `Σ 0 * mem[i]`, so only `Σ s_i == 1` can reject.
+#[test]
+fn memory_read_rejects_zero_selector() {
+    use crate::tests::e2e::assert_constrain_rejects_with_nondet;
+    use llzk_interpreter::Felt;
+
+    let circuit = make_circuit_with_opcodes(
+        3,
+        &[0, 1, 2],
+        &[],
+        &[3],
+        vec![mem_init(0, &[0, 1]), mem_read(0, 2, 3)],
+    );
+    let inputs = [felt_u64(42), felt_u64(99), felt_u64(0)];
+    let zero = [Felt::from_u64(0), Felt::from_u64(0)];
+
+    assert_constrain_rejects_with_nondet(circuit, &inputs, "w3", felt_u64(0), "!=", &[], &zero);
+}
+
+/// Dishonest selector on a write: write 77 at index 1 with a write selector
+/// pointing at slot 0, then an honest read of index 0 returns 77. The read side
+/// is fully consistent, so only the write selector's match constraint can reject.
+#[test]
+fn memory_write_rejects_dishonest_selector() {
+    use crate::tests::e2e::assert_constrain_rejects_with_nondet;
+    use llzk_interpreter::Felt;
+
+    // w0,w1 init; w2 = value to write; w3 = write index; w4 = read index; w5 = read out
+    let circuit = make_circuit_with_opcodes(
+        5,
+        &[0, 1, 2, 3, 4],
+        &[],
+        &[5],
+        vec![mem_init(0, &[0, 1]), mem_write(0, 3, 2), mem_read(0, 4, 5)],
+    );
+    let inputs = [
+        felt_u64(42),
+        felt_u64(99),
+        felt_u64(77),
+        felt_u64(1), // write index
+        felt_u64(0), // read index
+    ];
+    // constrain nondet: dishonest write selector (slot 0 for index 1), honest read selector (index 0)
+    let selector = [
+        Felt::from_u64(1),
+        Felt::from_u64(0),
+        Felt::from_u64(1),
+        Felt::from_u64(0),
+    ];
+
+    assert_constrain_rejects_with_nondet(
+        circuit,
+        &inputs,
+        "w5",
+        felt_u64(77),
+        "!=",
+        &[],
+        &selector,
+    );
+}
