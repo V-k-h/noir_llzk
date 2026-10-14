@@ -18,6 +18,7 @@ use crate::tests::TestConfig;
 
 mod blackboxes;
 mod brillig;
+mod circuit_tests;
 mod opcodes;
 
 // ── Felt construction helpers ───────────────────────────────────────────

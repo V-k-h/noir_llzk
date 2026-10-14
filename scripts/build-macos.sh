@@ -5,12 +5,17 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${script_dir}/.." && pwd)"
 
 if [[ -z "${LLVM_PREFIX:-}" ]]; then
-  if [[ -d "/opt/homebrew/opt/llvm@20" ]]; then
-    LLVM_PREFIX="/opt/homebrew/opt/llvm@20"
-  elif [[ -d "/usr/local/opt/llvm@20" ]]; then
-    LLVM_PREFIX="/usr/local/opt/llvm@20"
+  # Homebrew may install llvm@23 under the canonical llvm formula prefix.
+  if command -v brew >/dev/null 2>&1 \
+    && brew_llvm_prefix="$(brew --prefix llvm@23 2>/dev/null)" \
+    && [[ -d "${brew_llvm_prefix}" ]]; then
+    LLVM_PREFIX="${brew_llvm_prefix}"
+  elif [[ -d "/opt/homebrew/opt/llvm@23" ]]; then
+    LLVM_PREFIX="/opt/homebrew/opt/llvm@23"
+  elif [[ -d "/usr/local/opt/llvm@23" ]]; then
+    LLVM_PREFIX="/usr/local/opt/llvm@23"
   else
-    echo "error: llvm@20 not found. Set LLVM_PREFIX manually." >&2
+    echo "error: llvm@23 not found. Set LLVM_PREFIX manually." >&2
     exit 1
   fi
 fi
@@ -43,13 +48,13 @@ if [[ -z "${LLZK_LIB_ROOT:-}" ]]; then
   fi
 fi
 
-export MLIR_SYS_200_PREFIX="${MLIR_SYS_200_PREFIX:-${LLVM_PREFIX}}"
-export TABLEGEN_200_PREFIX="${TABLEGEN_200_PREFIX:-${LLVM_PREFIX}}"
+export MLIR_SYS_230_PREFIX="${MLIR_SYS_230_PREFIX:-${LLVM_PREFIX}}"
+export TABLEGEN_230_PREFIX="${TABLEGEN_230_PREFIX:-${LLVM_PREFIX}}"
 export LIBCLANG_PATH="${LIBCLANG_PATH:-${LLVM_PREFIX}/lib}"
 export LLZK_PCL_ROOT
 export LLZK_PCL_PREFIX
 if [[ -n "${LLZK_LIB_ROOT:-}" ]]; then
-  export LLZK_SYS_10_PREFIX="${LLZK_SYS_10_PREFIX:-${LLZK_LIB_ROOT}/build/install}"
+  export LLZK_SYS_30_PREFIX="${LLZK_SYS_30_PREFIX:-${LLZK_LIB_ROOT}/build/install}"
 fi
 export SDKROOT="${SDKROOT:-$(xcrun --show-sdk-path)}"
 
@@ -61,8 +66,8 @@ else
 fi
 
 echo "Building with:"
-echo "  MLIR_SYS_200_PREFIX=${MLIR_SYS_200_PREFIX}"
-echo "  TABLEGEN_200_PREFIX=${TABLEGEN_200_PREFIX}"
+echo "  MLIR_SYS_230_PREFIX=${MLIR_SYS_230_PREFIX}"
+echo "  TABLEGEN_230_PREFIX=${TABLEGEN_230_PREFIX}"
 echo "  LIBCLANG_PATH=${LIBCLANG_PATH}"
 echo "  LLZK_PCL_ROOT=${LLZK_PCL_ROOT}"
 echo "  LLZK_PCL_PREFIX=${LLZK_PCL_PREFIX}"
